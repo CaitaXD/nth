@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #ifndef DA_API
     #define DA_API static inline
@@ -15,6 +16,7 @@
     #define DA_MEMCPY memcpy
     #define DA_MEMSET memset
     #define DA_ASSERT assert
+    #define DA_MEMMOVE memmove
 #endif
 
 #ifndef DA_ALLOCATOR
@@ -62,7 +64,10 @@ __forceinline size_t da_len(const void *da);
     (da_)[index_] = value_; \
 )
 
+DA_API void da_remove_at(void *da, const size_t index);
+
 #ifdef DYNAMICARRAY_IMPLEMENTATION
+#define DA_ASSERT_NOTOUTOFBOUNDS(da_, index_) DA_ASSERT("Acess out of bounds" && (index_) < da_len(da_))
 
 struct DynamicArrayHeader {
     size_t size;
@@ -128,7 +133,17 @@ void *da_grow_n_(void *da, const size_t element_size, const size_t count) {
     return &header[1];
 }
 
-
-#define DA_ASSERT_NOTOUTOFBOUNDS(da_, index_) DA_ASSERT("Acess out of bounds" && (index_) < da_len(da_))
+void da_remove_at(void *da, const size_t index) {
+    DA_ASSERT_NOTOUTOFBOUNDS(da, index);
+    DA_ASSERT(da != NULL);
+    const size_t size = da_len(da);
+    void **da_ptr = da;
+    for (int j = index + 1; j < size; j++)
+    {
+        da_ptr[j - 1] = da_ptr[j];
+    }
+    DynamicArrayHeader *header = da;
+    header[-1].size--;
+}
 
 #endif //DYNAMICARRAY_IMPLEMENTATION

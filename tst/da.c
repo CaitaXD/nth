@@ -16,9 +16,11 @@ int main(void) {
     ASSERT_EQ(strings[3], "!");
     ASSERT_EQ(da_len(strings), 4);
 
-    for (size_t i = 0; i < da_len(strings); i++) {
-        printf("%s\n", strings[i]);
-    }
+    da_remove_at(strings, 1);
+    ASSERT_EQ(strings[0], "Hello");
+    ASSERT_EQ(strings[1], "World");
+    ASSERT_EQ(strings[2], "!");
+    ASSERT_EQ(da_len(strings), 3);
 
     return 0;
 }
