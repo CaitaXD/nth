@@ -2,6 +2,7 @@
 #define DYNAMICARRAY_H
 
 #include <stdint.h>
+#include <stdarg.h>
 
 #ifndef DA_API
     #define DA_API static inline
@@ -41,6 +42,16 @@ __forceinline size_t da_len(const void *da);
     void *__temp = da_grow_((da_), sizeof(*(da_))); \
     (da_) = __temp;           \
     (da_)[da_len(da_) - 1] = value_; \
+)
+
+#define da_add_range(da_, ...) DA_STATEMENT( \
+    __typeof__(*da_) *__args = ((__typeof__(*da_)[]){__VA_ARGS__}); \
+    size_t __size = sizeof(((__typeof__(*da_)[]){__VA_ARGS__})); \
+    size_t __count = __size / sizeof(*(da_)); \
+    size_t __prev_len = da_len(da_); \
+    void *__temp = da_grow_n_((da_), sizeof(*(da_)), __count); \
+    (da_) = __temp; \
+    DA_MEMCPY((da_) + __prev_len, __args, __size); \
 )
 
 #define da_insert(da_, index_, value_) DA_STATEMENT( \
@@ -94,6 +105,29 @@ void *da_grow_ (void *da, const size_t element_size){
     header->size++;
     return &header[1];
 }
+
+void *da_grow_n_(void *da, const size_t element_size, const size_t count) {
+    DynamicArrayHeader *header;
+    if (da == NULL)
+    {
+        header = da_new_(element_size, DEFAULT_CAPACITY);
+    }
+    else
+    {
+        header = (DynamicArrayHeader *)da - 1;
+    }
+    if (header->size + count > header->capacity)
+    {
+        DynamicArrayHeader *new_array = da_new_(element_size, header->capacity << 1U);
+        volatile const size_t copy_size = element_size * header->capacity + sizeof(DynamicArrayHeader);
+        memcpy(new_array, header, copy_size);
+        header = new_array;
+        new_array->capacity = header->capacity << 1U;
+    }
+    header->size += count;
+    return &header[1];
+}
+
 
 #define DA_ASSERT_NOTOUTOFBOUNDS(da_, index_) DA_ASSERT("Acess out of bounds" && (index_) < da_len(da_))
 
