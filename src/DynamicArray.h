@@ -6,8 +6,7 @@
 #include <string.h>
 #include <assert.h>
 
-#ifndef LEN_IMPLEMENTATION
-#define LEN_IMPLEMENTATION
+#ifndef LEN_H
 #include "len.h"
 #endif
 
@@ -30,6 +29,8 @@
 typedef struct DynamicArrayHeader DynamicArrayHeader;
 
 #endif //DYNAMICARRAY_H
+
+#define da_with_capacity(type_, capacity_) da_new_(sizeof(type_), capacity_)
 
 #define da_add(da_, value_) DA_STATEMENT( \
     void *__temp = da_grow_((da_), sizeof(*(da_))); \

@@ -1,6 +1,11 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
 #ifndef ARRAY_API
     #define ARRAY_API
 #endif
