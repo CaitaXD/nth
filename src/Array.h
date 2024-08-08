@@ -5,9 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "len.h"
 
 #ifndef ARRAY_API
     #define ARRAY_API
+#endif
+
+#ifndef CARRAY_LITERAL
+    #define CARRAY_LITERAL(type_, size_, ...) (type_[size_]){__VA_ARGS__}
 #endif
 
 #define ARRAY_MALLOC malloc
@@ -17,7 +22,6 @@
 
 typedef struct ArrayHeader ArrayHeader;
 
-#define CARRAY_LITERAL(type_, size_, ...) (type_[size_]){__VA_ARGS__}
 #define array_stackalloc(type_, size_) ((ArrayHeader*)CARRAY_LITERAL(size_t, size_/sizeof(size_t) + sizeof(ArrayHeader)/sizeof(size_t), size_))->data
 #define array_alloc(type_, size_) array_alloc_(sizeof(type_), size_)
 

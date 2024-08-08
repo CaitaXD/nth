@@ -1,121 +1,66 @@
-#ifndef STRINGBUILDER_H
-#define STRINGBUILDER_H
+#ifndef SB_API
+#define SB_API
 
-#ifndef STRINGBUILDER_API
-    #define STRINGBUILDER_API
+#ifndef SB_API
+    #define SB_API
 #endif
 
-typedef StringView StringView;
-typedef struct StringBuilder StringBuilder;
+#ifndef STATEMENT
+    #define STATEMENT(X) do { X } while (0)
+#endif
 
-#define string_builder(size_) string_builder_(((char[size_]){}), size_ * sizeof(char))
+#include "Buffer.h"
+#include "StringView.h"
 
-#define STRLEN(str_) _Generic(&(str_),\
-    char(*)[sizeof(str_)]: sizeof(str_) - 1, \
-    const char**: strlen(*(char**)(&str_)), \
-    char**: strlen(*(char**)(&str_)), \
-    const StringView*: ((StringView*)&str_)->length, \
-    StringView*: ((StringView*)&str_)->length \
+typedef struct StringBuilder {
+    void *sb_buffer;
+} StringBuilder;
+
+#define sb_stackalooc(size_) ((StringBuilder) { buffer_stackalloc(char, size_) })
+#define sb_alloc(size_) ((StringBuilder) { buffer_alloc(char, size_) })
+
+#define sb_append(sb_, str_) STATEMENT( \
+    const size_t __str_length = STRLEN((str_)); \
+    const char *__str_ptr = STRDATA((str_)); \
+    void *__sb_buffer = (sb_).sb_buffer; \
+    buffer_write(__sb_buffer, __str_ptr, __str_length); \
+	buffer_advance(__sb_buffer, __str_length); \
 )
 
-#define STRDATA(str_) _Generic(&(str_),\
-    char(*)[sizeof(str_)]: str_, \
-    const char**: *(const char**)(&str_), \
-    char**: *(char**)(&str_), \
-    const StringView*: ((const StringView*)&str_)->data, \
-    StringView*: ((StringView*)&str_)->data \
-)
+SB_API StringBuilder *sb_cstr_alloc(size_t capacity);
+SB_API const char* sb_cstr(const StringBuilder sb);
+SB_API void sb_free(StringBuilder sb);
 
-#define string_builder_append(sb_, str_) string_builder_append_((sb_), STRDATA((str_)), STRLEN((str_)))
 
-STRINGBUILDER_API StringBuilder *string_builder_alloc(size_t capacity);
-STRINGBUILDER_API const char* string_builder_cstr(StringBuilder *sb);
-STRINGBUILDER_API void string_builder_free(StringBuilder *sb);
+#endif //SB_API
 
-#endif //STRINGBUILDER_H
-
-#ifdef STRINGBUILDER_IMPLEMENTATION
+#ifdef SB_IMPLEMENTATION
+#undef SB_IMPLEMENTATION
 
 const size_t DEFAULT_STRING_BUILDER_CAPACITY = 1024;
 
-struct StringBuilder {
-    size_t current_max_size;
-    size_t length;
-    size_t string_length;
-    char *data;
-    StringBuilder *previus;
-    int heap_buffer:1;
-    int heap_self:1;
-};
-
-StringBuilder string_builder_(char *buffer, const size_t capacity) {
-    StringBuilder sb;
-    sb.current_max_size = capacity;
-    sb.length = 0;
-    sb.string_length = 0;
-    sb.data = buffer;
-    sb.heap_buffer = false;
-    sb.heap_self = false;
-    sb.previus = NULL;
-    return sb;
-}
-
-StringBuilder *string_builder_alloc(const size_t capacity) {
-    StringBuilder *sb = malloc(sizeof(StringBuilder));
-    sb->current_max_size = capacity;
-    sb->length = 0;
-    sb->string_length = 0;
-    sb->data = malloc(capacity);
-    sb->heap_buffer = true;
-    sb->heap_self = true;
-    sb->previus = NULL;
-    return sb;
-}
-
-static void string_bulder_swap(StringBuilder *a, StringBuilder *b) {
-    const StringBuilder tmp = *a;
-    *a = *b;
-    *b = tmp;
-    b->string_length = a->string_length;
-    a->heap_self = tmp.heap_self;
-}
-
-void string_builder_append_(StringBuilder *sb, const char *str, const size_t len) {
-    if (sb->length + len >= sb->current_max_size) {
-        StringBuilder *new_builder = string_builder_alloc(DEFAULT_STRING_BUILDER_CAPACITY);
-        string_bulder_swap(sb,new_builder);
-        sb->previus = new_builder;
-        int i = 0;
-    }
-    memcpy(sb->data + sb->length, str, len);
-    sb->length += len;
-    sb->string_length += len;
-}
-
-const char* string_builder_cstr(StringBuilder *sb) {
-    char *data = malloc(sb->string_length + 1);
-    StringBuilder *current = sb;
+const char* sb_cstr(const StringBuilder sb) {
+    const BufferHeader *current = (BufferHeader *)sb.sb_buffer - 1;
+    const size_t length = current->length;
+    char *cstr = malloc(length + 1);
     while (current != NULL) {
-        memcpy(data, current->data, current->length);
-        current = current->previus;
+        memcpy(cstr, &current->data[0], length);
+        current = current->prev;
     }
-    data[sb->string_length] = '\0';
-    return data;
+    cstr[length] = '\0';
+    return cstr;
 }
 
-void string_builder_free(StringBuilder *sb) {
-    StringBuilder *current = sb;
+void sb_free(const StringBuilder sb) {
+    BufferHeader *current = (BufferHeader *)sb.sb_buffer - 1;
     while (current != NULL) {
-        StringBuilder *next = current->previus;
-        if (current->heap_buffer && current->data != NULL) {
-            free(current->data);
-        }
-        if (current->heap_self) {
+        BufferHeader *next = current->prev;
+        if (current->heap_allocated) {
             free(current);
         }
         current = next;
     }
 }
 
-#endif //STRINGBUILDER_IMPLEMENTATION
+#endif //SB_IMPLEMENTATION
 

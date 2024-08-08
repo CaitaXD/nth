@@ -4,10 +4,35 @@
 #ifndef STRINGVIEW_API
     #define STRINGVIEW_API
 #endif
+
 #include <stdbool.h>
 #include <stddef.h>
+#include "len.h"
 
-typedef struct StringView StringView;
+#ifndef STRLEN
+    #define STRLEN(str_) _Generic(&(str_),\
+        char(*)[sizeof(str_)]: sizeof(str_) - 1, \
+        const char**: strlen(*(char**)(&str_)), \
+        char**: strlen(*(char**)(&str_)), \
+        const StringView*: ((StringView*)&str_)->length, \
+        StringView*: ((StringView*)&str_)->length \
+    )
+#endif
+
+#ifndef STRDATA
+    #define STRDATA(str_) _Generic(&(str_),\
+        char(*)[sizeof(str_)]: str_, \
+        const char**: *(const char**)(&str_), \
+        char**: *(char**)(&str_), \
+        const StringView*: ((const StringView*)&str_)->data, \
+        StringView*: ((StringView*)&str_)->data \
+    )
+#endif
+
+typedef struct StringView {
+    const char *data;
+    size_t length;
+} StringView;
 
 #define string_view_literal(data_) (StringView) {.data = data_, .length = sizeof(data_) - 1 }
 #define string_view_format "%.*s"
@@ -25,11 +50,7 @@ STRINGVIEW_API StringView string_view_token(StringView str, const char* delimete
 
 #endif //STRINGVIEW_H
 #ifdef STRINGVIEW_IMPLEMENTATION
-
-struct StringView {
-    const char *data;
-    size_t length;
-};
+#undef STRINGVIEW_IMPLEMENTATION
 
 StringView string_view(const char *data, const size_t length) {
     return (StringView){.data = data, .length = length};

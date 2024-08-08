@@ -5,8 +5,10 @@
 #include "Array.h"
 #define STRINGVIEW_IMPLEMENTATION
 #include "StringView.h"
-#define STRINGBUILDER_IMPLEMENTATION
+#define SB_IMPLEMENTATION
 #include "StringBuilder.h"
+#define BUFFER_IMPLEMENTATION
+#include "Buffer.h"
 
 #define ASSERT_TRUE(actual) if (!(actual)) { printf("Assertion failed at line %d", __LINE__); return 1; }
 #define ASSERT_EQ(actual, expected, fmt) if ((actual) != (expected)) { printf("Assertion failed at line %d Expected "fmt", got "fmt, __LINE__, expected, actual); return 1; }
@@ -53,19 +55,31 @@ int main(void) {
 
     StringView space_view = string_view_literal(" ");
     const char* bang_cstr = "!";
+    StringBuilder sb_stack = sb_stackalooc(1024);
 
-    StringBuilder sb = string_builder(1024);
+    sb_append(sb_stack, "Hello");
+    sb_append(sb_stack, string_view_literal(","));
+    sb_append(sb_stack, space_view);
+    sb_append(sb_stack, "World");
+    sb_append(sb_stack, bang_cstr);
 
-    string_builder_append(&sb, "Hello");
-    string_builder_append(&sb, string_view_literal(","));
-    string_builder_append(&sb, space_view);
-    string_builder_append(&sb, "World");
-    string_builder_append(&sb, bang_cstr);
-
-    const char* collected = string_builder_cstr(&sb);
-    string_builder_free(&sb);
+    const char* collected = sb_cstr(sb_stack);
+    sb_free(sb_stack);
 
     ASSERT_STR_EQ(collected, "Hello, World!");
+
+    const StringBuilder sb_heap = sb_alloc(1024);
+
+    sb_append(sb_heap, "Hello");
+    sb_append(sb_heap, string_view_literal(","));
+    sb_append(sb_heap, space_view);
+    sb_append(sb_heap, "World");
+    sb_append(sb_heap, bang_cstr);
+
+    const char* collected_heap = sb_cstr(sb_heap);
+    sb_free(sb_heap);
+
+    ASSERT_STR_EQ(collected_heap, "Hello, World!");
 
     return 0;
 }
