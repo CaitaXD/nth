@@ -27,9 +27,9 @@ typedef struct StringBuilder {
 	buffer_advance(__sb_buffer, __str_length); \
 )
 
-SB_API const char* sb_cstr(const StringBuilder sb);
+SB_API const char* sb_cstr(StringBuilder sb);
 SB_API void sb_free(StringBuilder sb);
-
+SB_API void sb_clear(StringBuilder sb);
 
 #endif //SB_API
 
@@ -59,6 +59,10 @@ void sb_free(const StringBuilder sb) {
         }
         current = next;
     }
+}
+
+void sb_clear(const StringBuilder sb) {
+    buffer_clear(sb.sb_buffer);
 }
 
 #endif //SB_IMPLEMENTATION

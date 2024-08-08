@@ -12,7 +12,7 @@
 #endif
 
 #ifndef CARRAY_LITERAL
-    #define CARRAY_LITERAL(type_, size_, ...) (type_[size_]){__VA_ARGS__}
+    #define CARRAY_LITERAL(type_, len_, ...) (type_[len_]){__VA_ARGS__}
 #endif
 
 #define ARRAY_MALLOC malloc

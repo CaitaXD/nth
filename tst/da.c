@@ -44,21 +44,21 @@ int main(void) {
     ASSERT_EQ(len(heap_person), 32UL, "%zu");
 
     const StringView first_name = string_view(person, 4);
-    ASSERT_TRUE(string_view_starts_with(string_view_literal("John Doe"), first_name));
+    ASSERT_TRUE(sv_starts_with(sv_literal("John Doe"), first_name));
 
     const StringView last_name = string_view(person + 5, 3);
-    ASSERT_TRUE(string_view_ends_with(string_view_literal("John Doe"), last_name));
+    ASSERT_TRUE(sv_ends_with(sv_literal("John Doe"), last_name));
 
-    ASSERT_EQ(string_view_index_of(string_view_literal("Hello Hello"), string_view_literal("Hello")), 0, "%d");
-    ASSERT_EQ(string_view_last_index_of(string_view_literal("Hello Hello"), string_view_literal("Hello")), 6, "%d");
-    ASSERT_EQ(string_view_token(string_view_literal("Hello;-Hello"), ";-").length, 5UL, "%zu");
+    ASSERT_EQ(sv_index_of(sv_literal("Hello Hello"), sv_literal("Hello")), 0, "%d");
+    ASSERT_EQ(sv_last_index_of(sv_literal("Hello Hello"), sv_literal("Hello")), 6, "%d");
+    ASSERT_EQ(sv_token(sv_literal("Hello;-Hello"), ";-").length, 5UL, "%zu");
 
-    StringView space_view = string_view_literal(" ");
+    StringView space_view = sv_literal(" ");
     const char* bang_cstr = "!";
     const StringBuilder sb_stack = sb_stackalloc(1024);
 
     sb_append(sb_stack, "Hello");
-    sb_append(sb_stack, string_view_literal(","));
+    sb_append(sb_stack, sv_literal(","));
     sb_append(sb_stack, space_view);
     sb_append(sb_stack, "World");
     sb_append(sb_stack, bang_cstr);
@@ -71,7 +71,7 @@ int main(void) {
     const StringBuilder sb_heap = sb_alloc(1024);
 
     sb_append(sb_heap, "Hello");
-    sb_append(sb_heap, string_view_literal(","));
+    sb_append(sb_heap, sv_literal(","));
     sb_append(sb_heap, space_view);
     sb_append(sb_heap, "World");
     sb_append(sb_heap, bang_cstr);

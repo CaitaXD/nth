@@ -34,19 +34,19 @@ typedef struct StringView {
     size_t length;
 } StringView;
 
-#define string_view_literal(data_) (StringView) {.data = data_, .length = sizeof(data_) - 1 }
-#define string_view_format "%.*s"
-#define string_view_args(sv_) (sv_).length, (sv_).data
-#define string_view_unpack(sv_) (sv_).data, (sv_).length
+#define sv_literal(data_) (StringView) {.data = data_, .length = sizeof(data_) - 1 }
+#define sv_fmt "%.*s"
+#define sv_args(sv_) (sv_).length, (sv_).data
+#define sv_unpack(sv_) (sv_).data, (sv_).length
 
 STRINGVIEW_API StringView string_view(const char *data, size_t length);
-STRINGVIEW_API bool string_view_equals(StringView a, StringView b);
-STRINGVIEW_API int string_view_compare(StringView a, StringView b);
-STRINGVIEW_API bool string_view_starts_with(StringView haystack, StringView needle);
-STRINGVIEW_API bool string_view_ends_with(StringView haystack, StringView needle);
-STRINGVIEW_API int string_view_index_of(StringView haystack, StringView needle);
-STRINGVIEW_API int string_view_last_index_of(StringView haystack, StringView needle);
-STRINGVIEW_API StringView string_view_token(StringView str, const char* delimeter);
+STRINGVIEW_API bool sv_equals(StringView a, StringView b);
+STRINGVIEW_API int sv_compare(StringView a, StringView b);
+STRINGVIEW_API bool sv_starts_with(StringView haystack, StringView needle);
+STRINGVIEW_API bool sv_ends_with(StringView haystack, StringView needle);
+STRINGVIEW_API int sv_index_of(StringView haystack, StringView needle);
+STRINGVIEW_API int sv_last_index_of(StringView haystack, StringView needle);
+STRINGVIEW_API StringView sv_token(StringView str, const char* delimeter);
 
 #endif //STRINGVIEW_H
 #ifdef STRINGVIEW_IMPLEMENTATION
@@ -56,32 +56,32 @@ StringView string_view(const char *data, const size_t length) {
     return (StringView){.data = data, .length = length};
 }
 
-bool string_view_equals(const StringView a, const StringView b) {
+bool sv_equals(const StringView a, const StringView b) {
     return a.length == b.length && memcmp(a.data, b.data, a.length) == 0;
 }
 
-int string_view_compare(const StringView a, const StringView b) {
+int sv_compare(const StringView a, const StringView b) {
     const size_t min_length = a.length < b.length ? a.length : b.length;
     return memcmp(a.data, b.data, min_length);
 }
 
-bool string_view_starts_with(const StringView haystack, const StringView needle) {
+bool sv_starts_with(const StringView haystack, const StringView needle) {
     if (haystack.length < needle.length) {
         return false;
     }
     const StringView prefix = string_view(haystack.data, needle.length);
-    return string_view_equals(prefix, needle);
+    return sv_equals(prefix, needle);
 }
 
-bool string_view_ends_with(const StringView haystack, const StringView needle) {
+bool sv_ends_with(const StringView haystack, const StringView needle) {
     if (haystack.length < needle.length) {
         return false;
     }
     const StringView suffix = string_view(haystack.data + haystack.length - needle.length, needle.length);
-    return string_view_equals(suffix, needle);
+    return sv_equals(suffix, needle);
 }
 
-int string_view_index_of(const StringView haystack, const StringView needle) {
+int sv_index_of(const StringView haystack, const StringView needle) {
     const char *p = strstr(haystack.data, needle.data);
     if (p == NULL) {
         return -1;
@@ -89,7 +89,7 @@ int string_view_index_of(const StringView haystack, const StringView needle) {
     return p - haystack.data;
 }
 
-int string_view_last_index_of(const StringView haystack, const StringView needle) {
+int sv_last_index_of(const StringView haystack, const StringView needle) {
     const char* haystack_end = haystack.data + haystack.length - needle.length;
     for(const char *p = haystack_end; p >= haystack.data; --p)
     {
@@ -104,8 +104,8 @@ int string_view_last_index_of(const StringView haystack, const StringView needle
     return 0;
 }
 
-StringView string_view_token(const StringView str, const char* delimeter) {
-    const int index = string_view_index_of(str, string_view_literal(delimeter));
+StringView sv_token(const StringView str, const char* delimeter) {
+    const int index = sv_index_of(str, sv_literal(delimeter));
     if (index == -1) {
         return (StringView){};
     }

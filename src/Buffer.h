@@ -25,30 +25,31 @@ typedef struct BufferHeader {
 #endif
 
 #ifndef CARRAY_LITERAL
-	#define CARRAY_LITERAL(type_, size_, ...) (type_[size_]){__VA_ARGS__}
+	#define CARRAY_LITERAL(type_, len_, ...) (type_[len_]){__VA_ARGS__}
 #endif
 
-#define buffer_stackalloc(type_, size_) \
+#define buffer_stackalloc(type_, len_) \
 	(struct  { \
 		BufferHeader header; \
-		char data[size_ * sizeof(type_)]; \
+		char data[len_ * sizeof(type_)]; \
 	})\
 	{ \
-		.header = { .capacity = size_ } \
+		.header = { .capacity = len_ } \
 	}.data
 
-#define buffer_alloc(type_, size_) buffer_allocate_(sizeof(type_), size_)->data
+#define buffer_alloc(type_, len_) buffer_allocate_(sizeof(type_), len_)->data
 
 #define buffer_advance(buffer_, length_) STATEMENT( \
 	void *__temp = advance_((buffer_), sizeof(*(buffer_)), (length_)); \
     (buffer_) = __temp; \
 )
 
-#define buffer_write(buffer_, value_, length_) STATEMENT( \
-	memcpy((buffer_) + len(buffer_), (value_), (length_)); \
+#define buffer_write(buffer_, value_, bytes_) STATEMENT( \
+	memcpy((buffer_) + len(buffer_), (value_), (bytes_)); \
 )
 
 BUFFER_API void buffer_clear(void* buffer);
+BUFFER_API void buffer_free(void *buffer);
 
 #endif // BUFFER_H
 #ifdef BUFFER_IMPLEMENTATION
@@ -108,6 +109,19 @@ void buffer_clear(void* buffer)
 	{
 		node->length = 0;
 	 	node = node->prev;
+	}
+}
+
+void buffer_free(void *buffer) {
+	if (buffer == NULL) return;
+
+	BufferHeader *node = (BufferHeader *)buffer - 1;
+	while(node != NULL)
+	{
+		if (node->heap_allocated) {
+			free(node);
+		}
+		node = node->prev;
 	}
 }
 
