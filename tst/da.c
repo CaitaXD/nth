@@ -55,7 +55,7 @@ int main(void) {
 
     StringView space_view = string_view_literal(" ");
     const char* bang_cstr = "!";
-    StringBuilder sb_stack = sb_stackalooc(1024);
+    const StringBuilder sb_stack = sb_stackalloc(1024);
 
     sb_append(sb_stack, "Hello");
     sb_append(sb_stack, string_view_literal(","));

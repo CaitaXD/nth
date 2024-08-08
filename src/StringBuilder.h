@@ -16,7 +16,7 @@ typedef struct StringBuilder {
     void *sb_buffer;
 } StringBuilder;
 
-#define sb_stackalooc(size_) ((StringBuilder) { buffer_stackalloc(char, size_) })
+#define sb_stackalloc(size_) ((StringBuilder) { buffer_stackalloc(char, size_) })
 #define sb_alloc(size_) ((StringBuilder) { buffer_alloc(char, size_) })
 
 #define sb_append(sb_, str_) STATEMENT( \
