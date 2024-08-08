@@ -5,10 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#ifndef LEN_H
 #include "len.h"
-#endif
 
 #ifndef DA_API
     #define DA_API static inline
