@@ -27,7 +27,6 @@ typedef struct StringBuilder {
 	buffer_advance(__sb_buffer, __str_length); \
 )
 
-SB_API StringBuilder *sb_cstr_alloc(size_t capacity);
 SB_API const char* sb_cstr(const StringBuilder sb);
 SB_API void sb_free(StringBuilder sb);
 
