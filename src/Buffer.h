@@ -8,13 +8,13 @@
 #include <assert.h>
 #include "len.h"
 
-typedef struct BufferHeader {
-	struct BufferHeader *prev;
+typedef struct BufferSegmentHeader {
+	struct BufferSegmentHeader *prev;
 	bool heap_allocated;
 	size_t capacity;
-	size_t length;
+	size_t seglen;
 	char data[];
-} BufferHeader;
+} BufferSegmentHeader;
 
 #ifndef STATEMENT
 	#define STATEMENT(X) do { X } while (0)
@@ -30,7 +30,7 @@ typedef struct BufferHeader {
 
 #define buffer_stackalloc(type_, len_) \
 	(struct  { \
-		BufferHeader header; \
+		BufferSegmentHeader header; \
 		char data[len_ * sizeof(type_)]; \
 	})\
 	{ \
@@ -39,8 +39,8 @@ typedef struct BufferHeader {
 
 #define buffer_alloc(type_, len_) buffer_allocate_(sizeof(type_), len_)->data
 
-#define buffer_advance(buffer_, length_) STATEMENT( \
-	void *__temp = advance_((buffer_), sizeof(*(buffer_)), (length_)); \
+#define buffer_advance(buffer_, seglen_) STATEMENT( \
+	BufferSegmentHeader *__temp = advance_((buffer_), sizeof(*(buffer_)), (seglen_)); \
     (buffer_) = __temp; \
 )
 
@@ -50,17 +50,18 @@ typedef struct BufferHeader {
 
 BUFFER_API void buffer_clear(void* buffer);
 BUFFER_API void buffer_free(void *buffer);
+BUFFER_API size_t seglen_sum(const void *buffer);
 
 #endif // BUFFER_H
 #ifdef BUFFER_IMPLEMENTATION
 
 const size_t BUFFER_DEFAULT_CAPACITY = 1024;
 
-BufferHeader *buffer_allocate_(const size_t element_size, const size_t capacity) {
-    BufferHeader *header = malloc(element_size * capacity + sizeof(BufferHeader));
+BufferSegmentHeader *buffer_allocate_(const size_t element_size, const size_t capacity) {
+    BufferSegmentHeader *header = malloc(element_size * capacity + sizeof(BufferSegmentHeader));
     header->capacity = (uint32_t)capacity;
     header->heap_allocated = true;
-	header->length = 0;
+	header->seglen = 0;
 	header->prev = NULL;
     return header;
 }
@@ -69,8 +70,8 @@ static size_t maxsz(size_t a, size_t b) {
     return a > b ? a : b;
 }
 
-void* advance_(void *buffer, const size_t element_size, const size_t amount) {
-    BufferHeader *header;
+BufferSegmentHeader* advance_(BufferSegmentHeader *buffer, const size_t element_size, const ssize_t amount) {
+    BufferSegmentHeader *header;
     const size_t new_cap = maxsz(BUFFER_DEFAULT_CAPACITY, amount);
 	if (buffer == NULL)
     {
@@ -78,36 +79,37 @@ void* advance_(void *buffer, const size_t element_size, const size_t amount) {
     }
     else 
     {
-    	header = (BufferHeader *)buffer - 1;
+    	header = buffer;
     }
-    if (header->length + amount > header->capacity)
+    if (header->seglen + amount > header->capacity)
     {
-    	BufferHeader *prev = header->prev;
+    	BufferSegmentHeader *prev = header->prev;
     	if (prev == NULL)
     	{
-    		prev = header->prev = buffer_allocate_(element_size, new_cap);
+    		prev = buffer_allocate_(element_size, new_cap);
+    		prev->prev = header;
     	}
     	else
     	{
-    		BufferHeader *tmp = prev->prev;
+    		BufferSegmentHeader *tmp = prev->prev;
     		prev->prev = header;
     		header->prev = tmp;
     	}
-	    header->length += amount;
-	    return &prev[1];
+    	prev->seglen = (ssize_t)prev->seglen + amount;
+	    return prev;
     }
-    header->length += amount;
-    return &header[1];
+    header->seglen = (ssize_t)header->seglen + amount;
+    return header;
 }
 
 void buffer_clear(void* buffer)
 {
 	if (buffer == NULL) return;
 
-	BufferHeader *node = (BufferHeader *)buffer - 1;
+	BufferSegmentHeader *node = (BufferSegmentHeader *)buffer - 1;
 	while(node != NULL)
 	{
-		node->length = 0;
+		node->seglen = 0;
 	 	node = node->prev;
 	}
 }
@@ -115,7 +117,7 @@ void buffer_clear(void* buffer)
 void buffer_free(void *buffer) {
 	if (buffer == NULL) return;
 
-	BufferHeader *node = (BufferHeader *)buffer - 1;
+	BufferSegmentHeader *node = (BufferSegmentHeader *)buffer - 1;
 	while(node != NULL)
 	{
 		if (node->heap_allocated) {
@@ -125,4 +127,16 @@ void buffer_free(void *buffer) {
 	}
 }
 
+size_t seglen_sum(const void *buffer) {
+	if (buffer == NULL) return 0;
+
+	size_t total = 0;
+	const BufferSegmentHeader *node = (BufferSegmentHeader *)buffer - 1;
+	while(node != NULL)
+	{
+		total += node->seglen;
+		node = node->prev;
+	}
+	return total;
+}
 #endif //BUFFER_IMPLEMENTATION

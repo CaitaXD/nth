@@ -55,20 +55,29 @@ int main(void) {
 
     StringView space_view = sv_literal(" ");
     const char* bang_cstr = "!";
-    const StringBuilder sb_stack = sb_stackalloc(1024);
+    StringBuilder sb_stack = sb_stackalloc(5);
 
     sb_append(sb_stack, "Hello");
+    ASSERT_STR_EQ(sb_cstr(sb_stack), "Hello");
+
     sb_append(sb_stack, sv_literal(","));
+    ASSERT_STR_EQ(sb_cstr(sb_stack), "Hello,");
+
     sb_append(sb_stack, space_view);
+    ASSERT_STR_EQ(sb_cstr(sb_stack), "Hello, ");
+
     sb_append(sb_stack, "World");
+    ASSERT_STR_EQ(sb_cstr(sb_stack), "Hello, World");
+
     sb_append(sb_stack, bang_cstr);
+    ASSERT_STR_EQ(sb_cstr(sb_stack), "Hello, World!");
 
     const char* collected = sb_cstr(sb_stack);
     sb_free(sb_stack);
 
     ASSERT_STR_EQ(collected, "Hello, World!");
 
-    const StringBuilder sb_heap = sb_alloc(1024);
+    StringBuilder sb_heap = sb_alloc(5);
 
     sb_append(sb_heap, "Hello");
     sb_append(sb_heap, sv_literal(","));

@@ -13,18 +13,24 @@
 #include "StringView.h"
 
 typedef struct StringBuilder {
-    void *sb_buffer;
+    BufferSegmentHeader *sb_buffer;
 } StringBuilder;
 
-#define sb_stackalloc(size_) ((StringBuilder) { buffer_stackalloc(char, size_) })
-#define sb_alloc(size_) ((StringBuilder) { buffer_alloc(char, size_) })
+#define sb_stackalloc(size_) ((StringBuilder) { (BufferSegmentHeader *)buffer_stackalloc(char, size_) - 1 })
+#define sb_alloc(size_) ((StringBuilder) { (BufferSegmentHeader *)buffer_alloc(char, size_) - 1 })
 
 #define sb_append(sb_, str_) STATEMENT( \
     const size_t __str_length = STRLEN((str_)); \
     const char *__str_ptr = STRDATA((str_)); \
-    void *__sb_buffer = (sb_).sb_buffer; \
-    buffer_write(__sb_buffer, __str_ptr, __str_length); \
-	buffer_advance(__sb_buffer, __str_length); \
+    BufferSegmentHeader *__buffer_header = (sb_).sb_buffer; \
+    if ((__buffer_header->capacity - __buffer_header->seglen) < __str_length) { \
+        buffer_advance(__buffer_header, __str_length); \
+        buffer_advance(__buffer_header, -__str_length); \
+    } \
+    void *__buffer_data = &__buffer_header->data[0]; \
+    buffer_write(__buffer_data, __str_ptr, __str_length); \
+	buffer_advance(__buffer_header, __str_length); \
+    (sb_).sb_buffer = __buffer_header; \
 )
 
 SB_API const char* sb_cstr(StringBuilder sb);
@@ -38,22 +44,41 @@ SB_API void sb_clear(StringBuilder sb);
 
 const size_t DEFAULT_STRING_BUILDER_CAPACITY = 1024;
 
-const char* sb_cstr(const StringBuilder sb) {
-    const BufferHeader *current = (BufferHeader *)sb.sb_buffer - 1;
-    const size_t length = current->length;
-    char *cstr = malloc(length + 1);
+static StringBuilder reverse(StringBuilder sb) {
+    BufferSegmentHeader *current = sb.sb_buffer;
+    BufferSegmentHeader *prev = NULL;
+    BufferSegmentHeader *tmp = NULL;
+
     while (current != NULL) {
-        memcpy(cstr, &current->data[0], length);
+        tmp = current->prev;
+        current->prev = prev;
+        prev = current;
+        current = tmp;
+    }
+    sb.sb_buffer = prev;
+    return sb;
+}
+
+const char* sb_cstr(StringBuilder sb) {
+    const size_t length = seglen_sum(sb.sb_buffer->data);
+    char *cstr = malloc(length + 1);
+    char *cursor = cstr;
+    sb = reverse(sb);
+    const BufferSegmentHeader *current = sb.sb_buffer;
+    while (current != NULL) {
+        memcpy(cursor, &current->data[0], length);
+        cursor += current->seglen;
         current = current->prev;
     }
     cstr[length] = '\0';
+    reverse(sb);
     return cstr;
 }
 
 void sb_free(const StringBuilder sb) {
-    BufferHeader *current = (BufferHeader *)sb.sb_buffer - 1;
+    BufferSegmentHeader *current = sb.sb_buffer;
     while (current != NULL) {
-        BufferHeader *next = current->prev;
+        BufferSegmentHeader *next = current->prev;
         if (current->heap_allocated) {
             free(current);
         }
@@ -62,7 +87,7 @@ void sb_free(const StringBuilder sb) {
 }
 
 void sb_clear(const StringBuilder sb) {
-    buffer_clear(sb.sb_buffer);
+    buffer_clear(&sb.sb_buffer->data[0]);
 }
 
 #endif //SB_IMPLEMENTATION
