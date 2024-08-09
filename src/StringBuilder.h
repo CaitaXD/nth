@@ -24,7 +24,6 @@ typedef struct StringBuilder {
     const char *__str_ptr = STRDATA((str_)); \
     void *__tmp = (sb_).sb_buffer->data; \
     buffer_write(__tmp, __str_ptr, __str_length); \
-	__tmp = buffer_advance_(__tmp, sizeof(char), __str_length); \
     (sb_).sb_buffer = buffer_header(__tmp); \
 )
 

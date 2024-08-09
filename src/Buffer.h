@@ -39,21 +39,10 @@ typedef struct BufferSegmentHeader {
 
 #define buffer_alloc(type_, len_) buffer_allocate_(sizeof(type_), len_)->data
 
-#define buffer_advance(buffer_, seglen_) STATEMENT( \
-	BufferSegmentHeader *__temp = buffer_advance_((buffer_), sizeof(*(buffer_)), (seglen_)); \
-    (buffer_) = __temp; \
-)
-
 #define buffer_header(buffer_) ((BufferSegmentHeader *)buffer_ - 1)
 
-#define buffer_ensure_capacity(buffer_, seglen_) STATEMENT( \
-	void *__temp = buffer_ensure_capacity_((buffer_), sizeof(*(buffer_)), (seglen_)); \
-	(buffer_) = __temp; \
-)
-
 #define buffer_write(buffer_, value_, bytes_) STATEMENT( \
-	__tmp = buffer_ensure_capacity_(__tmp, sizeof(char), __str_length); \
-	memcpy((buffer_) + len(buffer_), (value_), (bytes_)); \
+	__tmp = buffer_write_((buffer_), (value_), (bytes_)); \
 	(buffer_) = __tmp; \
 )
 
@@ -64,7 +53,7 @@ BUFFER_API size_t seglen_sum(const void *buffer);
 #endif // BUFFER_H
 #ifdef BUFFER_IMPLEMENTATION
 
-const size_t BUFFER_DEFAULT_CAPACITY = 1024;
+#define BUFFER_DEFAULT_CAPACITY 1024
 
 BufferSegmentHeader *buffer_allocate_(const size_t element_size, const size_t capacity) {
     BufferSegmentHeader *header = malloc(element_size * capacity + sizeof(BufferSegmentHeader));
@@ -75,71 +64,31 @@ BufferSegmentHeader *buffer_allocate_(const size_t element_size, const size_t ca
     return header;
 }
 
-static size_t maxsz(size_t a, size_t b) {
-    return a > b ? a : b;
-}
+static size_t maxsz(const size_t a, const size_t b) { return a > b ? a : b; }
+static size_t minsz(const size_t a, const size_t b) { return a < b ? a : b; }
+static size_t minssz(const ssize_t a, const ssize_t b) { return a < b ? a : b; }
 
 
-void* buffer_ensure_capacity_(void *buffer, const size_t element_size, const ssize_t amount) {
-	BufferSegmentHeader *header;
-	const size_t new_cap = maxsz(BUFFER_DEFAULT_CAPACITY, amount);
-	if (buffer == NULL)
-	{
-		header = buffer_allocate_(element_size, new_cap);
-	}
-	else
-	{
-		header = buffer_header(buffer);
-	}
-	if (header->seglen + amount > header->capacity)
-	{
-		BufferSegmentHeader *prev = header->prev;
-		if (prev == NULL)
-		{
-			prev = buffer_allocate_(element_size, new_cap);
-			prev->prev = header;
+void *buffer_write_(void *buffer, const void *value, const size_t bytes) {
+	BufferSegmentHeader *segment = buffer_header(buffer);
+	size_t written = 0;
+	while (written < bytes) {
+		const ssize_t remaining_bytes = (ssize_t)bytes - (ssize_t)written;
+		const ssize_t to_write = minssz(remaining_bytes, (ssize_t)segment->capacity - (ssize_t)segment->seglen);
+		if (to_write > 0) {
+			memcpy(segment->data + segment->seglen, value + written, to_write);
+			written += to_write;
+			segment->seglen += to_write;
 		}
-		else
-		{
-			BufferSegmentHeader *tmp = prev->prev;
-			prev->prev = header;
-			header->prev = tmp;
+		else {
+			if (segment->prev == NULL) {
+				BufferSegmentHeader* newseg = buffer_allocate_(sizeof(char), BUFFER_DEFAULT_CAPACITY);
+				newseg->prev = segment;
+				segment = newseg;
+			}
 		}
-		return prev->data;
 	}
-	return header->data;
-}
-
-void* buffer_advance_(void *buffer, const size_t element_size, const ssize_t amount) {
-    BufferSegmentHeader *header;
-    const size_t new_cap = maxsz(BUFFER_DEFAULT_CAPACITY, amount);
-	if (buffer == NULL)
-    {
-        header = buffer_allocate_(element_size, new_cap);
-    }
-    else 
-    {
-    	header = buffer_header(buffer);
-    }
-    if (header->seglen + amount > header->capacity)
-    {
-    	BufferSegmentHeader *prev = header->prev;
-    	if (prev == NULL)
-    	{
-    		prev = buffer_allocate_(element_size, new_cap);
-    		prev->prev = header;
-    	}
-    	else
-    	{
-    		BufferSegmentHeader *tmp = prev->prev;
-    		prev->prev = header;
-    		header->prev = tmp;
-    	}
-    	prev->seglen = (ssize_t)prev->seglen + amount;
-	    return prev->data;
-    }
-    header->seglen = (ssize_t)header->seglen + amount;
-    return header->data;
+	return segment->data;
 }
 
 void buffer_clear(void* buffer)
