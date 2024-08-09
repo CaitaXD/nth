@@ -52,7 +52,9 @@ typedef struct BufferSegmentHeader {
 )
 
 #define buffer_write(buffer_, value_, bytes_) STATEMENT( \
+	__tmp = buffer_ensure_capacity_(__tmp, sizeof(char), __str_length); \
 	memcpy((buffer_) + len(buffer_), (value_), (bytes_)); \
+	(buffer_) = __tmp; \
 )
 
 BUFFER_API void buffer_clear(void* buffer);
