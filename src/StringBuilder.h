@@ -22,15 +22,11 @@ typedef struct StringBuilder {
 #define sb_append(sb_, str_) STATEMENT( \
     const size_t __str_length = STRLEN((str_)); \
     const char *__str_ptr = STRDATA((str_)); \
-    BufferSegmentHeader *__buffer_header = (sb_).sb_buffer; \
-    if ((__buffer_header->capacity - __buffer_header->seglen) < __str_length) { \
-        buffer_advance(__buffer_header, __str_length); \
-        buffer_advance(__buffer_header, -__str_length); \
-    } \
-    void *__buffer_data = &__buffer_header->data[0]; \
-    buffer_write(__buffer_data, __str_ptr, __str_length); \
-	buffer_advance(__buffer_header, __str_length); \
-    (sb_).sb_buffer = __buffer_header; \
+    void *__tmp = (sb_).sb_buffer->data; \
+    __tmp = buffer_ensure_capacity_(__tmp, sizeof(char), __str_length); \
+    buffer_write(__tmp, __str_ptr, __str_length); \
+	__tmp = buffer_advance_(__tmp, sizeof(char), __str_length); \
+    (sb_).sb_buffer = buffer_header(__tmp); \
 )
 
 SB_API const char* sb_cstr(StringBuilder sb);
@@ -66,7 +62,7 @@ const char* sb_cstr(StringBuilder sb) {
     sb = reverse(sb);
     const BufferSegmentHeader *current = sb.sb_buffer;
     while (current != NULL) {
-        memcpy(cursor, &current->data[0], length);
+        memcpy(cursor, &current->data[0], current->seglen);
         cursor += current->seglen;
         current = current->prev;
     }

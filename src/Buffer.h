@@ -40,8 +40,15 @@ typedef struct BufferSegmentHeader {
 #define buffer_alloc(type_, len_) buffer_allocate_(sizeof(type_), len_)->data
 
 #define buffer_advance(buffer_, seglen_) STATEMENT( \
-	BufferSegmentHeader *__temp = advance_((buffer_), sizeof(*(buffer_)), (seglen_)); \
+	BufferSegmentHeader *__temp = buffer_advance_((buffer_), sizeof(*(buffer_)), (seglen_)); \
     (buffer_) = __temp; \
+)
+
+#define buffer_header(buffer_) ((BufferSegmentHeader *)buffer_ - 1)
+
+#define buffer_ensure_capacity(buffer_, seglen_) STATEMENT( \
+	void *__temp = buffer_ensure_capacity_((buffer_), sizeof(*(buffer_)), (seglen_)); \
+	(buffer_) = __temp; \
 )
 
 #define buffer_write(buffer_, value_, bytes_) STATEMENT( \
@@ -70,7 +77,38 @@ static size_t maxsz(size_t a, size_t b) {
     return a > b ? a : b;
 }
 
-BufferSegmentHeader* advance_(BufferSegmentHeader *buffer, const size_t element_size, const ssize_t amount) {
+
+void* buffer_ensure_capacity_(void *buffer, const size_t element_size, const ssize_t amount) {
+	BufferSegmentHeader *header;
+	const size_t new_cap = maxsz(BUFFER_DEFAULT_CAPACITY, amount);
+	if (buffer == NULL)
+	{
+		header = buffer_allocate_(element_size, new_cap);
+	}
+	else
+	{
+		header = buffer_header(buffer);
+	}
+	if (header->seglen + amount > header->capacity)
+	{
+		BufferSegmentHeader *prev = header->prev;
+		if (prev == NULL)
+		{
+			prev = buffer_allocate_(element_size, new_cap);
+			prev->prev = header;
+		}
+		else
+		{
+			BufferSegmentHeader *tmp = prev->prev;
+			prev->prev = header;
+			header->prev = tmp;
+		}
+		return prev->data;
+	}
+	return header->data;
+}
+
+void* buffer_advance_(void *buffer, const size_t element_size, const ssize_t amount) {
     BufferSegmentHeader *header;
     const size_t new_cap = maxsz(BUFFER_DEFAULT_CAPACITY, amount);
 	if (buffer == NULL)
@@ -79,7 +117,7 @@ BufferSegmentHeader* advance_(BufferSegmentHeader *buffer, const size_t element_
     }
     else 
     {
-    	header = buffer;
+    	header = buffer_header(buffer);
     }
     if (header->seglen + amount > header->capacity)
     {
@@ -96,10 +134,10 @@ BufferSegmentHeader* advance_(BufferSegmentHeader *buffer, const size_t element_
     		header->prev = tmp;
     	}
     	prev->seglen = (ssize_t)prev->seglen + amount;
-	    return prev;
+	    return prev->data;
     }
     header->seglen = (ssize_t)header->seglen + amount;
-    return header;
+    return header->data;
 }
 
 void buffer_clear(void* buffer)
